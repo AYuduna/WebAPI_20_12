@@ -1,0 +1,250 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Список телефонов</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.0/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+    <script>
+       
+    </script>
+    <h2>Список телефонов</h2>
+    <!-- Контейнер ошибок-->
+    <div id="errors" class="alert alert-danger" style="display:none;"></div>
+    <form name="phoneForm">
+        <input type="hidden" name="id" value="0" />
+        <div class="form-group col-md-5">
+            <label for="name">Название:</label>
+            <input class="form-control" name="name" />
+        </div>
+        <div class="form-group col-md-5">
+            <label for="name">Компания:</label>
+            <input class="form-control" name="company" />
+        </div>
+        <div class="form-group col-md-5">
+            <label for="price">Цена:</label>
+            <input class="form-control" name="price" type="number" />
+        </div>
+        <div class="panel-body">
+            <button type="submit" id="submit" class="btn btn-primary">Сохранить</button>
+            <a id="reset" class="btn btn-primary">Сбросить</a>
+        </div>
+    </form>
+    <table class="table table-condensed table-striped  col-md-6">
+        <thead><tr><th>Id</th><th>Название</th><th>Компания</th><th>Цена</th><th></th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        // Получение всех телефонов
+        async function GetPhones() {
+            // отправляет запрос и получаем ответ
+            const response = await fetch("/phones", {
+                method: "GET",
+                headers: { "Accept": "application/json", "Mode": "no-core" }
+            });
+            // если запрос прошел нормально
+            if (response.ok === true) {
+                // получаем данные
+                const phones = await response.json();
+                let rows = document.querySelector("tbody");
+                phones.forEach(phone => {
+                    // добавляем полученные элементы в таблицу
+                    rows.append(row(phone));
+                });
+            }
+        }
+        // Получение одного пользователя
+        async function GetPhone(id) {
+            const response = await fetch("/phones/" + id, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const phone = await response.json();
+                const form = document.forms["phoneForm"];
+                form.elements["id"].value = phone.id;
+                form.elements["name"].value = phone.name;
+                form.elements["company"].value = phone.name;
+                form.elements["price"].value = phone.price;
+            }
+        }
+        // Добавление пользователя
+        async function CreatePhone(phoneName, phoneCompany, phonePrice) {
+                   
+            
+            const response = await fetch("/phones", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: phoneName,
+                    company: phoneCompany,
+                    price: phonePrice
+                })
+            });
+            //if (response.ok === true) {
+            //    const phone = await response.json();
+            //    reset();
+            //    document.querySelector("tbody").append(row(phone));
+
+            if (response.ok === true) {
+                const phone = await response.json();
+                reset();
+                document.querySelector("tbody").append(row(phone));
+            }
+            else {
+                const errorData = await response.json();
+                console.log("errors", errorData);
+                if (errorData) {
+                    // ошибки вследствие валидации по атрибутам
+                    if (errorData.errors) {
+                        if (errorData.errors["Name"]) {
+                            addError(errorData.errors["Name"]);
+                        }
+                        if (errorData.errors["Price"]) {
+                            addError(errorData.errors["Price"]);
+                        }
+                    }
+                    // ошибки, определенные в контроллере
+                    // добавляем ошибки свойства Name
+                    if (errorData["Name"]) {
+                        addError(errorData["Name"]);
+                    }
+
+                    // добавляем ошибки свойства Company
+                    if (errorData["Company"]) {
+                        addError(errorData["Company"]);
+                    }
+                }
+
+                document.getElementById("errors").style.display = "block";
+            }
+        }
+
+        function addError(errors) {
+            errors.forEach(error => {
+                const p = document.createElement("p");
+                p.append(error);
+                document.getElementById("errors").append(p);
+            });
+        }
+       
+        // Изменение пользователя
+        async function EditPhone(phoneId, phoneName, phoneCompany, phonePrice) {
+            const response = await fetch("/phones", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: parseInt(phoneId, 10),
+                    name: phoneName,
+                    company: phoneCompany,
+                    price: phonePrice
+                })
+            });
+            if (response.ok === true) {
+                const phone = await response.json();
+                reset();
+                document.querySelector("tr[data-rowid='" + phone.id + "']").replaceWith(row(phone));
+            }
+        }
+        // Удаление пользователя
+        async function DeletePhone(id) {
+            const response = await fetch("/phones/" + id, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const phone = await response.json();
+                document.querySelector("tr[data-rowid='" + phone.id + "']").remove();
+            }
+        }
+
+        // сброс формы
+        function reset() {
+            const form = document.forms["phoneForm"];
+            form.reset();
+            form.elements["id"].value = 0;
+        }
+        // создание строки для таблицы
+        function row(phone) {
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", phone.id);
+
+            const idTd = document.createElement("td");
+            idTd.append(phone.id);
+            tr.append(idTd);
+
+            const nameTd = document.createElement("td");
+            nameTd.append(phone.name);
+            tr.append(nameTd);
+
+            const companyTd = document.createElement("td");
+            companyTd.append(phone.company);
+            tr.append(companyTd);
+
+            const priceTd = document.createElement("td");
+            priceTd.append(phone.price);
+            tr.append(priceTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("a");
+            editLink.setAttribute("data-id", phone.id);
+            editLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", e => {
+
+                e.preventDefault();
+                GetPhone(phone.id);
+            });
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("a");
+            removeLink.setAttribute("data-id", phone.id);
+            removeLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", e => {
+
+                e.preventDefault();
+                DeletePhone(phone.id);
+            });
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+        // сброс значений формы
+        document.getElementById("reset").click(function (e) {
+
+            e.preventDefault();
+            reset();
+        })
+
+        // отправка формы
+        document.forms["phoneForm"].addEventListener("submit", e => {
+            e.preventDefault();
+            document.getElementById("errors").innerHTML = "";
+            document.getElementById("errors").style.display = "none";
+            const form = document.forms["phoneForm"];
+            const id = form.elements["id"].value;
+            const name = form.elements["name"].value;
+            const company = form.elements["company"].value;
+            const price = form.elements["price"].value;
+            if (id == 0)
+                CreatePhone(name, company, price);
+            else
+                EditPhone(id, name, company, price);
+            
+        });
+
+        // загрузка пользователей
+        GetPhones();
+
+    </script>
+</body>
+</html>
